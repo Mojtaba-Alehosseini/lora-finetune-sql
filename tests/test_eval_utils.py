@@ -29,7 +29,7 @@ def test_extract_sql_plain():
 
 
 def test_extract_sql_strips_sql_marker():
-    text = "SQL: SELECT name FROM products;"
+    text = "### SQL\nSELECT name FROM products;"
     assert extract_sql(text) == "SELECT name FROM products;"
 
 
@@ -50,8 +50,8 @@ def test_extract_sql_adds_semicolon():
     assert result.endswith(";")
 
 
-def test_extract_sql_last_sql_marker():
-    text = "Here is the SQL: SELECT * FROM products; I hope this helps."
+def test_extract_sql_legacy_marker():
+    text = "SQL: SELECT * FROM products; I hope this helps."
     result = extract_sql(text)
     assert result.startswith("SELECT")
 

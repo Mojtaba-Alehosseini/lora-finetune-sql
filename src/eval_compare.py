@@ -32,21 +32,21 @@ SEED = 42
 
 
 def make_prompt(question: str, schema: str) -> str:
+    # Must match train_lora.py prompt format exactly
     return (
-        "You are an expert SQL generator. "
-        "Given a database schema and a natural language question, "
-        "write a single valid SQL query that answers the question. "
-        "Return only the SQL query, nothing else.\n\n"
-        f"Schema: {schema}\n\n"
-        f"Question: {question}\n\n"
-        "SQL:"
+        f"### Schema\n{schema}\n\n"
+        f"### Question\n{question}\n\n"
+        "### SQL\n"
     )
 
 
 def extract_sql(text: str) -> str:
-    """Strip everything before the last 'SQL:' marker and clean up."""
-    if "SQL:" in text:
-        text = text.split("SQL:")[-1]
+    """Strip prompt prefix and clean up generated SQL."""
+    # remove prompt markers (compact format and legacy)
+    for marker in ("### SQL\n", "### SQL", "SQL:\n", "SQL:"):
+        if marker in text:
+            text = text.split(marker)[-1]
+            break
     # strip markdown fences
     text = re.sub(r"```sql", "", text, flags=re.IGNORECASE)
     text = re.sub(r"```", "", text)
