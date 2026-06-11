@@ -10,7 +10,7 @@ models/
 *.bin
 *.pt
 huggingface_cache/
-train_log*.txt
+*_log*.txt
 gguf/
 .pytest_cache/
 .ruff_cache/

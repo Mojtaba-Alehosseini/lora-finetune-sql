@@ -1,0 +1,581 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "heldout_n": 40,
+  "base": {
+    "accuracy": 0.15,
+    "correct": 6,
+    "total": 40,
+    "exec_errors": 22
+  },
+  "finetuned": {
+    "accuracy": 0.5,
+    "correct": 20,
+    "total": 40,
+    "exec_errors": 5
+  },
+  "delta_accuracy": 0.35,
+  "details_base": [
+    {
+      "question": "Which products have never been ordered?",
+      "gold_sql": "SELECT name FROM products WHERE product_id NOT IN (SELECT DISTINCT product_id FROM order_items) ORDER BY name;",
+      "pred_sql": "SELECT DISTINCT p.product_id, p.name, p.category, p.price, p.stock_qty \nFROM products p \nWHERE NOT EXISTS (\n    SELECT 1 FROM orders o \n    WHERE o.customer_id = p.customer_id AND o.order_date IS NULL\n);",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Show the average price of Electronics products.",
+      "gold_sql": "SELECT ROUND(AVG(price), 2) AS avg_price FROM products WHERE category = 'Electronics';",
+      "pred_sql": "SELECT AVG(price) \nFROM products \nWHERE category = 'Electronics';",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show the count of products in each price tier (cheap/mid/expensive).",
+      "gold_sql": "SELECT SUM(CASE WHEN price < 30 THEN 1 ELSE 0 END) AS cheap, SUM(CASE WHEN price BETWEEN 30 AND 100 THEN 1 ELSE 0 END) AS mid, SUM(CASE WHEN price > 100 THEN 1 ELSE 0 END) AS expensive FROM products;",
+      "pred_sql": "SELECT \n    price,\n    COUNT(*) AS num_products\nFROM \n    products\nGROUP BY \n    price;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Count orders by status for the year 2023.",
+      "gold_sql": "SELECT status, COUNT(*) AS n FROM orders WHERE order_date LIKE '2023%' GROUP BY status ORDER BY status;",
+      "pred_sql": "SELECT \n    COUNT(*) AS total_orders,\n    SUM(status = 'completed') AS completed_orders,\n    SUM(status = 'pending') AS pending_orders,\n    SUM(status = 'cancelled') AS cancelled_orders\nFROM \n    orders\nWHERE \n    YEAR(joined_date) = 2023;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many customers are in each city?",
+      "gold_sql": "SELECT city, COUNT(*) AS n FROM customers GROUP BY city ORDER BY n DESC;",
+      "pred_sql": "SELECT city, COUNT(*) AS num_customers\nFROM customers\nGROUP BY city;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show customer name and total number of orders for customers from the UK.",
+      "gold_sql": "SELECT c.name, COUNT(o.order_id) AS n_orders FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id WHERE c.country = 'UK' GROUP BY c.customer_id ORDER BY n_orders DESC;",
+      "pred_sql": "SELECT c.name, COUNT(o.order_id)\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nWHERE c.city = 'London' AND c.country = 'UK'\nGROUP BY c.name;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show the total amount spent by each customer.",
+      "gold_sql": "SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC LIMIT 10;",
+      "pred_sql": "SELECT c.name AS CustomerName, SUM(o.quantity * o.unit_price) AS TotalSpent\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nGROUP BY c.customer_id;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Find the average stock quantity across all products.",
+      "gold_sql": "SELECT ROUND(AVG(stock_qty), 1) AS avg_stock FROM products;",
+      "pred_sql": "SELECT AVG(stock_qty)\nFROM products;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Which city has the most customers?",
+      "gold_sql": "SELECT city, COUNT(*) AS n FROM customers GROUP BY city ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT city FROM customers GROUP BY city ORDER BY COUNT(*) DESC LIMIT 1;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "List all product names and their prices.",
+      "gold_sql": "SELECT name, price FROM products ORDER BY name;",
+      "pred_sql": "SELECT name, price FROM products;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Which customers placed orders in both 2022 and 2023?",
+      "gold_sql": "SELECT customer_id FROM orders WHERE order_date LIKE '2022%' INTERSECT SELECT customer_id FROM orders WHERE order_date LIKE '2023%' ORDER BY customer_id;",
+      "pred_sql": "SELECT DISTINCT c.name AS customer_name\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nWHERE YEAR(o.order_date) IN (2022, 2023)\nGROUP BY c.customer_id\nHAVING COUNT(*) > 1;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Find the month with the highest number of orders.",
+      "gold_sql": "SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS n FROM orders GROUP BY month ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT DATE_FORMAT(T1.joined_date, '%Y-%m') AS Month,\n       COUNT(*) AS Order_Count\nFROM products AS T1\nJOIN orders AS T2 ON T1.product_id = T2.order_id\nGROUP BY DATE_FORMAT(T1.joined_date, '%Y-%m')\nORDER BY Order_Count DESC;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Find orders placed by customers from Italy.",
+      "gold_sql": "SELECT o.order_id, c.name, o.order_date, o.status FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.country = 'Italy' ORDER BY o.order_date DESC LIMIT 10;",
+      "pred_sql": "SELECT o.order_id, o.customer_id, o.order_date, o.status \nFROM orders o \nJOIN customers c ON o.customer_id = c.customer_id \nWHERE c.city = 'Italy';",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "List customers who ordered Electronics products.",
+      "gold_sql": "SELECT DISTINCT c.name, c.city FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_id = p.product_id WHERE p.category = 'Electronics' ORDER BY c.name;",
+      "pred_sql": "SELECT c.name AS CustomerName, o.order_date \nFROM customers c \nJOIN orders o ON c.customer_id = o.customer_id \nJOIN order_items oi ON o.order_id = oi.order_id \nWHERE oi.product_id IN (SELECT DISTINCT p.product_id FROM products p WHERE p.category = 'Electronics')\nORDER BY o.order_date DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders did each customer place? Show all customers.",
+      "gold_sql": "SELECT c.name, COUNT(o.order_id) AS n_orders FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id ORDER BY n_orders DESC LIMIT 20;",
+      "pred_sql": "SELECT c.name AS Customer_Name, COUNT(o.order_id) AS Order_Count\nFROM products p \nJOIN orders o ON p.product_id = o.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_id;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many orders are there in total?",
+      "gold_sql": "SELECT COUNT(*) AS total_orders FROM orders;",
+      "pred_sql": "SELECT SUM(quantity) AS total_orders FROM order_items;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were shipped or delivered?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM orders WHERE status IN ('shipped', 'delivered');",
+      "pred_sql": "SELECT SUM(T2.quantity * T1.unit_price) AS total_quantity, \n       SUM(T2.quantity) AS total_quantity_shipped_or_delivered\nFROM products AS T1\nJOIN order_items AS T2 ON T1.product_id = T2.product_id\nJOIN orders AS T3 ON T2.order_id = T3.order_id\nGROUP BY T1.product_id;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Show the 10 customers who spent the most overall.",
+      "gold_sql": "SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC LIMIT 10;",
+      "pred_sql": "SELECT c.name AS Customer_Name, SUM(o.quantity * o.unit_price) AS Total_Spent\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nGROUP BY c.customer_id\nORDER BY Total_Spent DESC\nLIMIT 10;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many Accessories products are there?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM products WHERE category = 'Accessories';",
+      "pred_sql": "SELECT COUNT(*) FROM products WHERE category = 'Accessories';",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show all orders made by customer ID 1.",
+      "gold_sql": "SELECT order_id, order_date, status FROM orders WHERE customer_id = 1 ORDER BY order_date;",
+      "pred_sql": "SELECT * FROM orders WHERE customer_id = 1;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were delivered?",
+      "gold_sql": "SELECT COUNT(*) AS delivered FROM orders WHERE status = 'delivered';",
+      "pred_sql": "SELECT SUM(quantity * unit_price) AS total_quantity, SUM(quantity * unit_price) / SUM(stock_qty) AS average_order_value\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE o.status = 'Delivered'\nGROUP BY total_quantity;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Show orders placed in 2024.",
+      "gold_sql": "SELECT order_id, customer_id, order_date, status FROM orders WHERE order_date LIKE '2024%' ORDER BY order_date;",
+      "pred_sql": "SELECT *\nFROM orders\nWHERE YEAR(orders.joined_date) = 2024;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Show total sales (revenue) per product, top 10.",
+      "gold_sql": "SELECT p.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.product_id GROUP BY p.product_id ORDER BY revenue DESC LIMIT 10;",
+      "pred_sql": "SELECT \n    p.product_id,\n    SUM(o.quantity * o.unit_price) AS total_sales\nFROM \n    products p\nJOIN \n    orders o ON p.order_id = o.order_id\nGROUP BY \n    p.product_id\nORDER BY \n    total_sales DESC\nLIMIT 10;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many orders were placed in each quarter of 2023?",
+      "gold_sql": "SELECT CASE WHEN order_date BETWEEN '2023-01-01' AND '2023-03-31' THEN 'Q1'      WHEN order_date BETWEEN '2023-04-01' AND '2023-06-30' THEN 'Q2'      WHEN order_date BETWEEN '2023-07-01' AND '2023-09-30' THEN 'Q3'      ELSE 'Q4' END AS quarter, COUNT(*) AS n FROM orders WHERE order_date LIKE '2023%' GROUP BY quarter ORDER BY quarter;",
+      "pred_sql": "SELECT \n    strftime('%Q', order_date) AS quarter,\n    COUNT(*) AS total_orders\nFROM \n    orders\nGROUP BY \n    strftime('%Q', order_date)\nORDER BY \n    strftime('%Q', order_date');",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Which products cost less than $30?",
+      "gold_sql": "SELECT name, price FROM products WHERE price < 30 ORDER BY price;",
+      "pred_sql": "SELECT p.name \nFROM products AS p \nJOIN (\n    SELECT o.product_id, SUM(o.quantity * o.unit_price) as total_cost \n    FROM orders AS o \n    JOIN order_items AS oi ON o.order_id = oi.order_id \n    WHERE oi.quantity > 0 AND oi.product_id IN (SELECT p.product_id FROM products AS p WHERE p.price < 30)\n    GROUP BY o.product_id \n    ORDER BY total_cost ASC;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "What is the average number of items per order?",
+      "gold_sql": "SELECT ROUND(AVG(item_count), 2) AS avg_items_per_order FROM (SELECT order_id, COUNT(*) AS item_count FROM order_items GROUP BY order_id);",
+      "pred_sql": "SELECT AVG(quantity * unit_price) AS avg_quantity_per_order \nFROM orders \nJOIN order_items ON orders.order_id = order_items.order_id \nJOIN products ON order_items.product_id = products.product_id \nWHERE order_items.quantity > 0;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Which product was ordered the most times (by order count, not quantity)?",
+      "gold_sql": "SELECT p.name, COUNT(DISTINCT oi.order_id) AS n_orders FROM order_items oi JOIN products p ON oi.product_id = p.product_id GROUP BY p.product_id ORDER BY n_orders DESC LIMIT 1;",
+      "pred_sql": "SELECT p.name AS ProductName, COUNT(*) AS OrderCount\nFROM products p\nJOIN orders o ON p.order_id = o.order_id\nGROUP BY p.product_id\nORDER BY OrderCount DESC;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "What is the average price per category?",
+      "gold_sql": "SELECT category, ROUND(AVG(price), 2) AS avg_price FROM products GROUP BY category ORDER BY category;",
+      "pred_sql": "SELECT AVG(price) AS avg_price_per_category \nFROM products \nJOIN order_items ON products.product_id = order_items.product_id \nGROUP BY categories.category;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Label each product as 'cheap' (<$30), 'mid' ($30-$100), or 'expensive' (>$100).",
+      "gold_sql": "SELECT name, price, CASE WHEN price < 30 THEN 'cheap'      WHEN price <= 100 THEN 'mid'      ELSE 'expensive' END AS price_tier FROM products ORDER BY price;",
+      "pred_sql": "SELECT \n    CASE \n        WHEN T2.price < 30 THEN 'cheap'\n        WHEN T2.price BETWEEN 30 AND 100 THEN 'mid'\n        ELSE 'expensive'\n    END AS label,\n    T1.name\nFROM products AS T1\nJOIN order_items AS T2 ON T1.product_id = T2.product_id\nJOIN orders AS T3 ON T2.order_id = T3.order_id;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Which product categories have an average price above $100?",
+      "gold_sql": "SELECT category, ROUND(AVG(price), 2) AS avg_price FROM products GROUP BY category HAVING avg_price > 100 ORDER BY avg_price DESC;",
+      "pred_sql": "SELECT \n    c.category,\n    AVG(o.price) AS avg_price_above_100\nFROM \n    products p\nJOIN \n    orders o ON p.order_id = o.order_id\nJOIN \n    customers c ON o.customer_id = c.customer_id\nGROUP BY \n    c.category\nHAVING \n    AVG(o.price) > 100;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Show total inventory value per category.",
+      "gold_sql": "SELECT category, ROUND(SUM(price * stock_qty), 2) AS total_value FROM products GROUP BY category ORDER BY total_value DESC;",
+      "pred_sql": "SELECT \n    c.category,\n    SUM(o.quantity * o.unit_price) AS total_inventory_value\nFROM \n    products p\nJOIN \n    orders o ON p.order_id = o.order_id\nJOIN \n    customers c ON o.customer_id = c.customer_id\nGROUP BY \n    c.category;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "What is the revenue from shipped orders?",
+      "gold_sql": "SELECT ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id = o.order_id WHERE o.status = 'shipped';",
+      "pred_sql": "SELECT SUM(T2.quantity * T1.price) AS total_revenue \nFROM products AS T1 \nJOIN order_items AS T3 ON T1.product_id = T3.product_id \nJOIN orders AS T2 ON T3.order_id = T2.order_id \nWHERE T2.status = 'Shipped';",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many customers are from Germany?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM customers WHERE country = 'Germany';",
+      "pred_sql": "SELECT COUNT(DISTINCT T1.customer_id)\nFROM products AS T1\nJOIN customers AS T2 ON T1.customer_id = T2.customer_id\nWHERE T2.country = 'Germany';",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many orders were cancelled?",
+      "gold_sql": "SELECT COUNT(*) AS cancelled FROM orders WHERE status = 'cancelled';",
+      "pred_sql": "SELECT COUNT(*) FROM orders WHERE status = 'cancelled';",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were placed each year?",
+      "gold_sql": "SELECT strftime('%Y', order_date) AS year, COUNT(*) AS n FROM orders GROUP BY year ORDER BY year;",
+      "pred_sql": "SELECT \n    strftime('%Y', order_date) AS 'Year',\n    COUNT(*) AS 'Orders'\nFROM \n    orders\nGROUP BY \n    strftime('%Y', order_date)\nORDER BY \n    Year DESC;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "What is the total quantity sold across all orders?",
+      "gold_sql": "SELECT SUM(quantity) AS total_qty FROM order_items;",
+      "pred_sql": "SELECT SUM(T2.quantity * T1.unit_price) AS Total_Sold\nFROM products AS T1\nJOIN order_items AS T2 ON T1.product_id = T2.product_id\nJOIN orders AS T3 ON T2.order_id = T3.order_id;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "What is the most common order status?",
+      "gold_sql": "SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT COUNT(DISTINCT product_id) FROM products;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show the 5 most expensive products.",
+      "gold_sql": "SELECT name, price FROM products ORDER BY price DESC LIMIT 5;",
+      "pred_sql": "SELECT * FROM products \nORDER BY price DESC \nLIMIT 5;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Which categories have more than 3 products?",
+      "gold_sql": "SELECT category, COUNT(*) AS n FROM products GROUP BY category HAVING n > 3 ORDER BY n DESC;",
+      "pred_sql": "SELECT category \nFROM products \nGROUP BY category \nHAVING COUNT(*) > 3;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Find the highest-revenue single order.",
+      "gold_sql": "SELECT order_id, ROUND(SUM(quantity * unit_price), 2) AS revenue FROM order_items GROUP BY order_id ORDER BY revenue DESC LIMIT 1;",
+      "pred_sql": "SELECT o.order_id, p.name AS product_name, o.quantity, o.unit_price \nFROM orders o \nJOIN products p ON o.product_id = p.product_id \nWHERE o.quantity > 0 AND o.status = 'completed' \nORDER BY o.quantity DESC \nLIMIT 1;",
+      "match": false,
+      "exec_error": true
+    }
+  ],
+  "details_finetuned": [
+    {
+      "question": "Which products have never been ordered?",
+      "gold_sql": "SELECT name FROM products WHERE product_id NOT IN (SELECT DISTINCT product_id FROM order_items) ORDER BY name;",
+      "pred_sql": "SELECT DISTINCT p.name FROM products p JOIN order_items oi ON p.product_id = oi.product_id WHERE oi.order_id IS NULL ORDER BY p.name;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show the average price of Electronics products.",
+      "gold_sql": "SELECT ROUND(AVG(price), 2) AS avg_price FROM products WHERE category = 'Electronics';",
+      "pred_sql": "SELECT ROUND(AVG(price), 2) AS avg_price FROM products WHERE category = 'Electronics';",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show the count of products in each price tier (cheap/mid/expensive).",
+      "gold_sql": "SELECT SUM(CASE WHEN price < 30 THEN 1 ELSE 0 END) AS cheap, SUM(CASE WHEN price BETWEEN 30 AND 100 THEN 1 ELSE 0 END) AS mid, SUM(CASE WHEN price > 100 THEN 1 ELSE 0 END) AS expensive FROM products;",
+      "pred_sql": "SELECT price, COUNT(*) AS n FROM products GROUP BY price ORDER BY price;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Count orders by status for the year 2023.",
+      "gold_sql": "SELECT status, COUNT(*) AS n FROM orders WHERE order_date LIKE '2023%' GROUP BY status ORDER BY status;",
+      "pred_sql": "SELECT status, COUNT(*) AS n FROM orders WHERE order_date LIKE '2023%' GROUP BY status ORDER BY status;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many customers are in each city?",
+      "gold_sql": "SELECT city, COUNT(*) AS n FROM customers GROUP BY city ORDER BY n DESC;",
+      "pred_sql": "SELECT c.city, COUNT(*) AS n FROM customers c JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.city ORDER BY n DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show customer name and total number of orders for customers from the UK.",
+      "gold_sql": "SELECT c.name, COUNT(o.order_id) AS n_orders FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id WHERE c.country = 'UK' GROUP BY c.customer_id ORDER BY n_orders DESC;",
+      "pred_sql": "SELECT c.name, COUNT(*) AS n FROM customers c JOIN orders o ON c.customer_id = o.customer_id WHERE c.country = 'UK' GROUP BY c.customer_id ORDER BY n DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show the total amount spent by each customer.",
+      "gold_sql": "SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC LIMIT 10;",
+      "pred_sql": "SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Find the average stock quantity across all products.",
+      "gold_sql": "SELECT ROUND(AVG(stock_qty), 1) AS avg_stock FROM products;",
+      "pred_sql": "SELECT ROUND(AVG(stock_qty), 1) AS avg_stock FROM products;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Which city has the most customers?",
+      "gold_sql": "SELECT city, COUNT(*) AS n FROM customers GROUP BY city ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT c.city, COUNT(*) AS n FROM customers c JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.city ORDER BY n DESC LIMIT 1;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "List all product names and their prices.",
+      "gold_sql": "SELECT name, price FROM products ORDER BY name;",
+      "pred_sql": "SELECT name, price FROM products ORDER BY name;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Which customers placed orders in both 2022 and 2023?",
+      "gold_sql": "SELECT customer_id FROM orders WHERE order_date LIKE '2022%' INTERSECT SELECT customer_id FROM orders WHERE order_date LIKE '2023%' ORDER BY customer_id;",
+      "pred_sql": "SELECT c.name, COUNT(*) AS n FROM customers c JOIN orders o ON c.customer_id = o.customer_id WHERE strftime('%Y', o.order_date) IN ('2022', '2023') GROUP BY c.customer_id HAVING n > 1 ORDER BY n DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Find the month with the highest number of orders.",
+      "gold_sql": "SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS n FROM orders GROUP BY month ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT strftime('%m', ordered_date) AS month, COUNT(*) AS n FROM orders GROUP BY month ORDER BY n DESC LIMIT 1;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "Find orders placed by customers from Italy.",
+      "gold_sql": "SELECT o.order_id, c.name, o.order_date, o.status FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.country = 'Italy' ORDER BY o.order_date DESC LIMIT 10;",
+      "pred_sql": "SELECT o.order_id, o.order_date, o.status FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.city = 'Italy' ORDER BY o.order_date;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "List customers who ordered Electronics products.",
+      "gold_sql": "SELECT DISTINCT c.name, c.city FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_id = p.product_id WHERE p.category = 'Electronics' ORDER BY c.name;",
+      "pred_sql": "SELECT c.name, c.email FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id WHERE c.category = 'Electronics' ORDER BY c.name;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many orders did each customer place? Show all customers.",
+      "gold_sql": "SELECT c.name, COUNT(o.order_id) AS n_orders FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id ORDER BY n_orders DESC LIMIT 20;",
+      "pred_sql": "SELECT c.name, COUNT(*) AS n FROM customers c JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id ORDER BY n DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders are there in total?",
+      "gold_sql": "SELECT COUNT(*) AS total_orders FROM orders;",
+      "pred_sql": "SELECT COUNT(*) AS n FROM orders;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were shipped or delivered?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM orders WHERE status IN ('shipped', 'delivered');",
+      "pred_sql": "SELECT COUNT(*) AS n FROM orders WHERE status = 'shipped' OR status = 'delivered';",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show the 10 customers who spent the most overall.",
+      "gold_sql": "SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC LIMIT 10;",
+      "pred_sql": "SELECT c.name, ROUND(AVG(o.order_amount), 2) AS avg_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id GROUP BY c.customer_id ORDER BY avg_spent DESC LIMIT 10;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many Accessories products are there?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM products WHERE category = 'Accessories';",
+      "pred_sql": "SELECT COUNT(*) AS n FROM products WHERE category = 'Accessories';",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show all orders made by customer ID 1.",
+      "gold_sql": "SELECT order_id, order_date, status FROM orders WHERE customer_id = 1 ORDER BY order_date;",
+      "pred_sql": "SELECT o.order_id, o.order_date, o.status FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE c.customer_id = 1 ORDER BY o.order_date;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were delivered?",
+      "gold_sql": "SELECT COUNT(*) AS delivered FROM orders WHERE status = 'delivered';",
+      "pred_sql": "SELECT COUNT(*) AS n FROM orders;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show orders placed in 2024.",
+      "gold_sql": "SELECT order_id, customer_id, order_date, status FROM orders WHERE order_date LIKE '2024%' ORDER BY order_date;",
+      "pred_sql": "SELECT order_id, customer_id, order_date FROM orders WHERE order_date LIKE '2024%' ORDER BY order_date;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show total sales (revenue) per product, top 10.",
+      "gold_sql": "SELECT p.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.product_id GROUP BY p.product_id ORDER BY revenue DESC LIMIT 10;",
+      "pred_sql": "SELECT p.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.product_id GROUP BY p.product_id ORDER BY revenue DESC LIMIT 10;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were placed in each quarter of 2023?",
+      "gold_sql": "SELECT CASE WHEN order_date BETWEEN '2023-01-01' AND '2023-03-31' THEN 'Q1'      WHEN order_date BETWEEN '2023-04-01' AND '2023-06-30' THEN 'Q2'      WHEN order_date BETWEEN '2023-07-01' AND '2023-09-30' THEN 'Q3'      ELSE 'Q4' END AS quarter, COUNT(*) AS n FROM orders WHERE order_date LIKE '2023%' GROUP BY quarter ORDER BY quarter;",
+      "pred_sql": "SELECT strftime('%Q', order_date) AS quarter, COUNT(*) AS n FROM orders GROUP BY quarter ORDER BY quarter;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Which products cost less than $30?",
+      "gold_sql": "SELECT name, price FROM products WHERE price < 30 ORDER BY price;",
+      "pred_sql": "SELECT name, price FROM products WHERE price < 30 ORDER BY price;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "What is the average number of items per order?",
+      "gold_sql": "SELECT ROUND(AVG(item_count), 2) AS avg_items_per_order FROM (SELECT order_id, COUNT(*) AS item_count FROM order_items GROUP BY order_id);",
+      "pred_sql": "SELECT ROUND(AVG(quantity), 1) AS avg_items FROM order_items;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Which product was ordered the most times (by order count, not quantity)?",
+      "gold_sql": "SELECT p.name, COUNT(DISTINCT oi.order_id) AS n_orders FROM order_items oi JOIN products p ON oi.product_id = p.product_id GROUP BY p.product_id ORDER BY n_orders DESC LIMIT 1;",
+      "pred_sql": "SELECT p.name, ROUND(SUM(oi.quantity), 1) AS qty FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id ORDER BY qty DESC LIMIT 1;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "What is the average price per category?",
+      "gold_sql": "SELECT category, ROUND(AVG(price), 2) AS avg_price FROM products GROUP BY category ORDER BY category;",
+      "pred_sql": "SELECT category, ROUND(AVG(price), 2) AS avg_price FROM products GROUP BY category ORDER BY avg_price DESC;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Label each product as 'cheap' (<$30), 'mid' ($30-$100), or 'expensive' (>$100).",
+      "gold_sql": "SELECT name, price, CASE WHEN price < 30 THEN 'cheap'      WHEN price <= 100 THEN 'mid'      ELSE 'expensive' END AS price_tier FROM products ORDER BY price;",
+      "pred_sql": "SELECT name, category, CASE WHEN price < 30 THEN 'cheap' WHEN price >= 30 AND price <= 100 THEN 'mid' ELSE 'expensive' END AS price_level FROM products ORDER BY price_level;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Which product categories have an average price above $100?",
+      "gold_sql": "SELECT category, ROUND(AVG(price), 2) AS avg_price FROM products GROUP BY category HAVING avg_price > 100 ORDER BY avg_price DESC;",
+      "pred_sql": "SELECT category, AVG(price) AS avg_price FROM products GROUP BY category HAVING avg_price > 100 ORDER BY avg_price DESC;",
+      "match": false,
+      "exec_error": false
+    },
+    {
+      "question": "Show total inventory value per category.",
+      "gold_sql": "SELECT category, ROUND(SUM(price * stock_qty), 2) AS total_value FROM products GROUP BY category ORDER BY total_value DESC;",
+      "pred_sql": "SELECT category, ROUND(SUM(quantity * unit_price), 2) AS value FROM order_items GROUP BY category ORDER BY value DESC;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "What is the revenue from shipped orders?",
+      "gold_sql": "SELECT ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id = o.order_id WHERE o.status = 'shipped';",
+      "pred_sql": "SELECT ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.product_id WHERE oi.order_status = 'shipped' ORDER BY revenue DESC LIMIT 1;",
+      "match": false,
+      "exec_error": true
+    },
+    {
+      "question": "How many customers are from Germany?",
+      "gold_sql": "SELECT COUNT(*) AS n FROM customers WHERE country = 'Germany';",
+      "pred_sql": "SELECT COUNT(*) AS n FROM customers WHERE country = 'Germany' ORDER BY n DESC LIMIT 1;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were cancelled?",
+      "gold_sql": "SELECT COUNT(*) AS cancelled FROM orders WHERE status = 'cancelled';",
+      "pred_sql": "SELECT COUNT(*) AS n FROM orders WHERE status = 'cancelled' ORDER BY n DESC;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "How many orders were placed each year?",
+      "gold_sql": "SELECT strftime('%Y', order_date) AS year, COUNT(*) AS n FROM orders GROUP BY year ORDER BY year;",
+      "pred_sql": "SELECT strftime('%Y', order_date) AS year, COUNT(*) AS n FROM orders GROUP BY year ORDER BY year;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "What is the total quantity sold across all orders?",
+      "gold_sql": "SELECT SUM(quantity) AS total_qty FROM order_items;",
+      "pred_sql": "SELECT ROUND(SUM(oi.quantity), 1) AS total_sold FROM order_items oi;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "What is the most common order status?",
+      "gold_sql": "SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC LIMIT 1;",
+      "pred_sql": "SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC LIMIT 1;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Show the 5 most expensive products.",
+      "gold_sql": "SELECT name, price FROM products ORDER BY price DESC LIMIT 5;",
+      "pred_sql": "SELECT name, price FROM products ORDER BY price DESC LIMIT 5;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Which categories have more than 3 products?",
+      "gold_sql": "SELECT category, COUNT(*) AS n FROM products GROUP BY category HAVING n > 3 ORDER BY n DESC;",
+      "pred_sql": "SELECT category, COUNT(*) AS n FROM products GROUP BY category HAVING n > 3 ORDER BY n DESC;",
+      "match": true,
+      "exec_error": false
+    },
+    {
+      "question": "Find the highest-revenue single order.",
+      "gold_sql": "SELECT order_id, ROUND(SUM(quantity * unit_price), 2) AS revenue FROM order_items GROUP BY order_id ORDER BY revenue DESC LIMIT 1;",
+      "pred_sql": "SELECT o.order_id, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id = o.order_id GROUP BY o.order_id ORDER BY revenue DESC LIMIT 1;",
+      "match": true,
+      "exec_error": false
+    }
+  ]
+}

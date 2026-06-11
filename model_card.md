@@ -41,10 +41,12 @@ See `eval/results.json` for committed results (written by `src/eval_compare.py`)
 
 | Model | Execution Accuracy | Exec Errors |
 |---|---|---|
-| Qwen2.5-0.5B-Instruct (base) | See eval/results.json | — |
-| + LoRA fine-tuned (3 epochs) | See eval/results.json | — |
+| Qwen2.5-0.5B-Instruct (base) | **15.0%** (6/40) | 22/40 |
+| + LoRA fine-tuned (3 epochs) | **50.0%** (20/40) | 5/40 |
 
-*Real numbers only — run `python src/eval_compare.py` to reproduce.*
+Delta: **+35.0 pp**. Exec errors dropped from 22 to 5.
+
+*Real numbers — run `python src/eval_compare.py` to reproduce (seed=42).*
 
 ## Limitations
 

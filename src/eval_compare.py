@@ -27,7 +27,7 @@ DB_PATH = ROOT / "data" / "sample.sqlite"
 HELDOUT_PATH = ROOT / "data" / "heldout.jsonl"
 RESULTS_PATH = ROOT / "eval" / "results.json"
 MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
-MAX_NEW_TOKENS = 128
+MAX_NEW_TOKENS = 96  # SQL queries are typically 15-80 tokens
 SEED = 42
 
 
