@@ -87,7 +87,7 @@ eval/
 
 tests/
   test_dataset.py        — all SQL executes, DB integrity, JSONL structure (19 tests)
-  test_eval_utils.py     — extract_sql, exec_sql, rows_match utilities (14 tests)
+  test_eval_utils.py     — extract_sql, exec_sql, rows_match, make_prompt utilities (22 tests)
 
 model_card.md            — intended use, training data, limitations
 ```
@@ -102,7 +102,7 @@ model_card.md            — intended use, training data, limitations
 - `python data/build_dataset.py` rebuilds the database deterministically
 
 ```bash
-pytest -q   # 33 tests
+pytest -q   # 40 tests
 ```
 
 ---
@@ -136,3 +136,7 @@ ollama run nl-to-sql
 - [peft](https://github.com/huggingface/peft) (Apache-2.0) — LoRA implementation
 - [Unsloth](https://github.com/unslothai/unsloth) (Apache-2.0) — fast QLoRA (Colab notebook)
 - Code: MIT — see [LICENSE](LICENSE)
+
+---
+
+*Built by [Mojtaba Alehosseini](https://github.com/Mojtaba-Alehosseini) — data scientist.*

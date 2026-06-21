@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from eval_compare import extract_sql, exec_sql, rows_match
+from eval_compare import extract_sql, exec_sql, make_prompt, rows_match
 
 DB_PATH = Path(__file__).parent.parent / "data" / "sample.sqlite"
 
@@ -106,3 +106,51 @@ def test_rows_match_order_insensitive(conn):
     r1 = exec_sql(conn, "SELECT product_id FROM products ORDER BY product_id;")
     r2 = exec_sql(conn, "SELECT product_id FROM products ORDER BY product_id DESC;")
     assert rows_match(r1, r2)
+
+
+def test_rows_match_empty_sets_equal():
+    # Two queries that both return zero rows should be considered equal
+    a = frozenset()
+    b = frozenset()
+    assert rows_match(a, b)
+
+
+# ── make_prompt ────────────────────────────────────────────────────────────── #
+
+SCHEMA = "CREATE TABLE products (product_id INT, name TEXT, price REAL);"
+QUESTION = "How many products cost more than 10?"
+
+
+def test_make_prompt_contains_schema():
+    prompt = make_prompt(QUESTION, SCHEMA)
+    assert SCHEMA in prompt
+
+
+def test_make_prompt_contains_question():
+    prompt = make_prompt(QUESTION, SCHEMA)
+    assert QUESTION in prompt
+
+
+def test_make_prompt_ends_with_sql_marker():
+    prompt = make_prompt(QUESTION, SCHEMA)
+    assert prompt.strip().endswith("### SQL")
+
+
+def test_make_prompt_schema_before_question():
+    prompt = make_prompt(QUESTION, SCHEMA)
+    assert prompt.index("### Schema") < prompt.index("### Question")
+
+
+def test_make_prompt_question_before_sql():
+    prompt = make_prompt(QUESTION, SCHEMA)
+    assert prompt.index("### Question") < prompt.index("### SQL")
+
+
+# ── exec_sql edge cases ──────────────────────────────────────────────────────
+
+def test_exec_sql_empty_result_is_frozenset(conn):
+    # A valid query that returns no rows should give an empty frozenset, not None
+    result = exec_sql(conn, "SELECT * FROM products WHERE product_id = -999;")
+    assert result is not None
+    assert isinstance(result, frozenset)
+    assert len(result) == 0
